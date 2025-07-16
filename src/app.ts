@@ -11,13 +11,10 @@ type TaxResult = {
   readonly year: string;
   readonly income: number;
   readonly tax: number;
-  readonly medicareLevy: number;
-  readonly totalTax: number;
   readonly afterTax: number;
   readonly effectiveRate: number;
 };
 
-// Tax brackets with numeric separators for readability
 const TAX_BRACKETS: Record<string, readonly TaxBracket[]> = {
   "2022-2023": [
     { min: 0, max: 18_200, rate: 0, base: 0 },
@@ -49,7 +46,6 @@ const TAX_BRACKETS: Record<string, readonly TaxBracket[]> = {
   ],
 } as const;
 
-// TaxService class for better organization and testing
 export class TaxService {
   getAvailableYears(): readonly string[] {
     return Object.keys(TAX_BRACKETS);
@@ -131,18 +127,16 @@ export class TaxService {
   }
 }
 
-// Simple interface for testability
-export interface InputProvider {
+export interface IInputProvider {
   prompt(question: string): Promise<string>;
 }
 
-export interface OutputProvider {
+export interface IOutputProvider {
   log(message: string): void;
   showResult(result: TaxResult): void;
 }
 
-// Default implementations
-export class ConsoleInputProvider implements InputProvider {
+export class ConsoleInputProvider implements IInputProvider {
   async prompt(question: string): Promise<string> {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -158,7 +152,7 @@ export class ConsoleInputProvider implements InputProvider {
   }
 }
 
-export class ConsoleOutputProvider implements OutputProvider {
+export class ConsoleOutputProvider implements IOutputProvider {
   log(message: string): void {
     console.log(message);
   }
@@ -175,8 +169,8 @@ export class ConsoleOutputProvider implements OutputProvider {
 
 export class TaxCalculator {
   constructor(
-    private input: InputProvider = new ConsoleInputProvider(),
-    private output: OutputProvider = new ConsoleOutputProvider(),
+    private input: IInputProvider = new ConsoleInputProvider(),
+    private output: IOutputProvider = new ConsoleOutputProvider(),
     private taxService: TaxService = new TaxService(),
   ) {}
 
