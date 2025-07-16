@@ -4,6 +4,7 @@ import {
   type OutputProvider,
   TaxCalculator,
   TaxService,
+  type TaxResult,
 } from '../src/app.js';
 
 describe('TaxService', () => {
@@ -16,7 +17,7 @@ describe('TaxService', () => {
   describe('getAvailableYears', () => {
     it('should return available tax years', () => {
       const years = taxService.getAvailableYears();
-      expect(years).toEqual(['2023-2024', '2024-2025']);
+      expect(years).toEqual(['2022-2023', '2023-2024', '2024-2025', '2025-2026']);
     });
   });
 
@@ -27,25 +28,38 @@ describe('TaxService', () => {
     });
 
     it('should calculate tax for second bracket (2023-2024)', () => {
-      // $20,000: (20000 - 18200) * 0.19 = $342
-      expect(taxService.calculateTax('2023-2024', 20_000)).toBe(342);
+      // $20,000: (20000 - 18201) * 0.19 = $341.81
+      expect(taxService.calculateTax('2023-2024', 20_000)).toBe(341.81);
     });
 
     it('should calculate tax for third bracket (2023-2024)', () => {
-      // $50,000: 5092 + (50000 - 45000) * 0.325 = $6717
-      expect(taxService.calculateTax('2023-2024', 50_000)).toBe(6_717);
+      // $50,000: 5092 + (50000 - 45001) * 0.325 = $6716.68
+      expect(taxService.calculateTax('2023-2024', 50_000)).toBe(6716.68);
     });
 
     it('should calculate tax for highest bracket (2023-2024)', () => {
-      // $200,000: 51667 + (200000 - 180000) * 0.45 = $60667
-      expect(taxService.calculateTax('2023-2024', 200_000)).toBe(60_667);
+      // $200,000: 51667 + (200000 - 180001) * 0.45 = $60666.55
+      expect(taxService.calculateTax('2023-2024', 200_000)).toBe(60666.55);
     });
 
     it('should calculate different rates for 2024-2025', () => {
+      // $20,000: (20000 - 18201) * 0.16 = $287.84
+      expect(taxService.calculateTax('2024-2025', 20_000)).toBe(287.84);
+      // $50,000: 4288 + (50000 - 45001) * 0.3 = $5787.7
+      expect(taxService.calculateTax('2024-2025', 50_000)).toBe(5787.7);
+    });
+
+    it('should calculate correct rates for 2025-2026', () => {
       // $20,000: (20000 - 18200) * 0.16 = $288
-      expect(taxService.calculateTax('2024-2025', 20_000)).toBe(288);
-      // $50,000: 4288 + (50000 - 45000) * 0.3 = $5788
-      expect(taxService.calculateTax('2024-2025', 50_000)).toBe(5_788);
+      expect(taxService.calculateTax('2025-2026', 20_000)).toBe(288);
+      // $50,000: 4288 + (50000 - 45001) * 0.3 = $5787.7
+      expect(taxService.calculateTax('2025-2026', 50_000)).toBe(5787.7);
+    });
+
+    it('should calculate older rates for 2022-2023', () => {
+      // Same brackets as 2023-2024
+      expect(taxService.calculateTax('2022-2023', 20_000)).toBe(341.81);
+      expect(taxService.calculateTax('2022-2023', 50_000)).toBe(6716.68);
     });
 
     it('should throw error for invalid year', () => {
@@ -53,10 +67,12 @@ describe('TaxService', () => {
     });
 
     it('should handle edge cases', () => {
-      expect(taxService.calculateTax('2023-2024', 45_000)).toBe(5_092); // Exactly at bracket boundary
+      expect(taxService.calculateTax('2023-2024', 45_000)).toBe(5091.81); // Exactly at bracket boundary
       expect(taxService.calculateTax('2023-2024', 18_200)).toBe(0); // Tax-free threshold
     });
   });
+
+
 
   describe('calculateResult', () => {
     it('should return complete tax calculation result', () => {
@@ -65,9 +81,9 @@ describe('TaxService', () => {
       expect(result).toEqual({
         year: '2023-2024',
         income: 50_000,
-        tax: 6_717,
-        afterTax: 43_283,
-        effectiveRate: 13.434,
+        tax: 6716.68,
+        afterTax: 43283.32,
+        effectiveRate: 13.43336,
       });
     });
 
@@ -84,6 +100,14 @@ describe('TaxService', () => {
       const expectedEffectiveRate = (result.tax / result.income) * 100;
 
       expect(result.effectiveRate).toBeCloseTo(expectedEffectiveRate, 3);
+    });
+
+    it('should work with 2025-2026 rates', () => {
+      const result = taxService.calculateResult('2025-2026', 50_000);
+
+      expect(result.tax).toBe(5787.7);
+      expect(result.afterTax).toBe(44212.3);
+      expect(result.effectiveRate).toBe(11.5754);
     });
   });
 
@@ -113,11 +137,11 @@ describe('TaxService', () => {
     });
 
     it('should reject unavailable years', () => {
-      const result = taxService.validateYear('2022-2023');
+      const result = taxService.validateYear('2021-2022');
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('2022-2023');
-        expect(result.error).toContain('2023-2024, 2024-2025');
+        expect(result.error).toContain('2021-2022');
+        expect(result.error).toContain('2022-2023, 2023-2024, 2024-2025, 2025-2026');
       }
     });
   });
@@ -268,9 +292,9 @@ describe('TaxCalculator', () => {
       expect(result).toEqual({
         year: '2023-2024',
         income: 50_000,
-        tax: 6_717,
-        afterTax: 43_283,
-        effectiveRate: 13.434,
+        tax: 6716.68,
+        afterTax: 43283.32,
+        effectiveRate: 13.43336,
       });
       expect(mockOutput.showResult).toHaveBeenCalledWith(result);
     });
@@ -296,12 +320,14 @@ describe('Integration Tests', () => {
     const taxService = new TaxService();
 
     // Medium income
-    expect(taxService.calculateTax('2023-2024', 80_000)).toBe(16_467);
-    expect(taxService.calculateTax('2024-2025', 80_000)).toBe(14_788);
+    expect(taxService.calculateTax('2023-2024', 80_000)).toBe(16466.68);
+    expect(taxService.calculateTax('2024-2025', 80_000)).toBe(14787.7);
+    expect(taxService.calculateTax('2025-2026', 80_000)).toBe(14787.7);
 
     // High income
-    expect(taxService.calculateTax('2023-2024', 150_000)).toBe(40_567);
-    expect(taxService.calculateTax('2024-2025', 150_000)).toBe(36_938);
+    expect(taxService.calculateTax('2023-2024', 150_000)).toBe(40566.63);
+    expect(taxService.calculateTax('2024-2025', 150_000)).toBe(36837.63);
+    expect(taxService.calculateTax('2025-2026', 150_000)).toBe(36837.63);
   });
 
   it('should work with default providers', async () => {
@@ -315,10 +341,12 @@ describe('Integration Tests', () => {
 
     // Easy to test multiple related scenarios with the same instance
     const scenarios = [
-      { year: '2023-2024', income: 30_000, expectedTax: 2_242 },
-      { year: '2023-2024', income: 60_000, expectedTax: 9_967 },
-      { year: '2024-2025', income: 30_000, expectedTax: 1_888 },
-      { year: '2024-2025', income: 60_000, expectedTax: 8_788 },
+      { year: '2023-2024', income: 30_000, expectedTax: 2241.81 },
+      { year: '2023-2024', income: 60_000, expectedTax: 9966.67 },
+      { year: '2024-2025', income: 30_000, expectedTax: 1887.84 },
+      { year: '2024-2025', income: 60_000, expectedTax: 8787.7 },
+      { year: '2025-2026', income: 30_000, expectedTax: 1888 },
+      { year: '2025-2026', income: 60_000, expectedTax: 8787.7 },
     ];
 
     scenarios.forEach(({ year, income, expectedTax }) => {
@@ -333,9 +361,9 @@ describe('Integration Tests', () => {
       calculateResult: vi.fn().mockReturnValue({
         year: '2023-2024',
         income: 50_000,
-        tax: 6_717,
-        afterTax: 43_283,
-        effectiveRate: 13.434,
+        tax: 6716.68,
+        afterTax: 43283.32,
+        effectiveRate: 13.43336,
       }),
     } as any;
 
@@ -358,8 +386,9 @@ describe('Integration Tests', () => {
 
     if (validation.success) {
       const result = taxService.calculateResult(validation.data, 75_000);
-      expect(result.year).toBe('2023-2024');
+      expect(result.year).toBe('2022-2023');
       expect(result.tax).toBeGreaterThan(0);
+      expect(result.afterTax).toBeLessThan(75_000);
     }
   });
 });
