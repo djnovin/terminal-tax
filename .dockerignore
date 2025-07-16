@@ -1,0 +1,10 @@
+node_modules
+dist
+__tests__
+*.test.ts
+*.spec.ts
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
